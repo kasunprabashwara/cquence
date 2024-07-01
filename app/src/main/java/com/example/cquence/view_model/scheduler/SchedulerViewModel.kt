@@ -1,6 +1,7 @@
 package com.example.cquence.view_model.scheduler
 
 import android.app.Notification
+import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.net.Uri
@@ -11,7 +12,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cquence.data_types.Action
 import com.example.cquence.room_db.SequenceDao
-import com.example.cquence.utilities.AudioPlayer
+import com.example.cquence.services.audio.AudioManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -21,6 +22,8 @@ import java.util.Timer
 import kotlin.concurrent.fixedRateTimer
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.DurationUnit
+import kotlin.time.toDuration
 
 
 class SchedulerViewModel (
@@ -33,9 +36,15 @@ class SchedulerViewModel (
     private var processingActions: List<ProcessingAction> = emptyList()
 
     // action actuators
-    private val audioPlayer = AudioPlayer(appContext)
+    private val audioManager = AudioManager(appContext)
     private val vibrator = appContext.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
     private val notificationManager = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    init {
+        val notificationChannel = NotificationChannel("Cquence", "Cquence", NotificationManager.IMPORTANCE_HIGH).apply {
+            description = "Cquence notifications"
+        }
+        notificationManager.createNotificationChannel(notificationChannel)
+    }
 
     // this part is to display the time since start of the sequence
     private var timer: Timer? = null
@@ -44,54 +53,84 @@ class SchedulerViewModel (
     private val _minutes = MutableStateFlow("00")
     private val _seconds = MutableStateFlow("00")
 
-    private fun updateTimer() {
-        duration = duration.plus(1.seconds)
-        duration.toComponents { hours, minutes, seconds, _ ->
-            _seconds.value = seconds.toString()
-            _minutes.value = minutes.toString()
-            _hours.value = hours.toInt().toString()
-        }
-    }
 
     // define state values for the action list
     private val _sequenceName = MutableStateFlow("")
+    private val _isRunning = MutableStateFlow(false)
     private var _scheduledActions = MutableStateFlow(emptyList<ScheduledAction>())
     private val _nextScheduledActionIndex = MutableStateFlow(0)
     private val _actionHappening = MutableStateFlow(false)
     val state = combine(
+        _sequenceName,
+        _isRunning,
         _scheduledActions,
         _nextScheduledActionIndex,
+        _actionHappening,
         _hours,
         _minutes,
         _seconds
-    ) { scheduledAction, nextScheduledActionIndex, hours, minutes, seconds ->
+    ) { flows ->
         SchedulerState(
-            scheduledActionList = scheduledAction,
-            nextScheduledActionIndex = nextScheduledActionIndex,
-            hour = hours,
-            minute = minutes,
-            second = seconds
+            sequenceName = flows[0] as String,
+            isRunning = flows[1] as Boolean,
+            scheduledActionList = flows[2] as List<ScheduledAction>,
+            nextScheduledActionIndex = flows[3] as Int,
+            actionHappening = flows[4] as Boolean,
+            hour = flows[5] as String,
+            minute = flows[6] as String,
+            second = flows[7] as String
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(),
         initialValue = SchedulerState()
     )
-
-
-    // schedule first 10 actions
-//    private fun init(sequenceId: Int) {
-//        actionList = sequenceDao.getSequenceById(sequenceId).actionList
-//        startTime = System.currentTimeMillis()
-//        for (action in actionList!!) {
-//            processingAction = processingAction + ProcessingAction(action, action.initialDelay, 0)
-//        }
-//        schedule(10)
-//    }
+    private fun updateState() {
+        val currentIndex = _nextScheduledActionIndex.value-1
+        if(currentIndex>=0){
+            val currentAction = _scheduledActions.value[currentIndex]
+            if (currentAction.action.isAudioPlayed){
+                val isPlaying =audioManager.isPlaying(Uri.parse(currentAction.action.audioURI))
+                if (!isPlaying){
+                    _actionHappening.value = false
+                }
+            }
+        }
+        duration = duration.plus(1.seconds)
+        updateTimeState()
+    }
+    private fun stopSequence() {
+        timer?.cancel()
+        audioManager.stopAllRingtones()
+        vibrator.cancel()
+        notificationManager.cancelAll()
+        _isRunning.value = false
+        _actionHappening.value = false
+        duration = Duration.ZERO
+        updateTimeState()
+    }
+    private fun pauseSequence() {
+        timer?.cancel()
+        audioManager.stopAllRingtones()
+        vibrator.cancel()
+        notificationManager.cancelAll()
+        _isRunning.value = false
+        _actionHappening.value = false
+    }
+    private fun cleanScheduleAll() {
+        startTime = System.currentTimeMillis()
+        _scheduledActions.value = emptyList()
+        _nextScheduledActionIndex.value = 0
+        for (action in actionList!!) {
+            processingActions = processingActions + ProcessingAction(action, action.initialDelay, 0)
+        }
+        //todo for now we only support 250 actions
+        schedule(250)
+    }
     private fun schedule(size: Int = 1): Int {
         var scheduledCount = 0
         while (_scheduledActions.value.size <= size) {
-            processingActions= processingActions.filter { !it.isCompleted }
+            processingActions = processingActions.filter { !it.isCompleted }
             if (processingActions.isEmpty()) {
                 break
             }
@@ -108,12 +147,21 @@ class SchedulerViewModel (
         return scheduledCount
     }
 
+    private fun updateTimeState() {
+        duration.toComponents { hours, minutes, seconds, _ ->
+            _hours.value = hours.toString()
+            _minutes.value = minutes.toString()
+            _seconds.value = seconds.toString()
+        }
+    }
     private fun executeAction(action: Action) {
         if (action.isAudioPlayed) {
-            audioPlayer.stopAudio()
-            audioPlayer.playAudio(Uri.parse(action.audioURI))
+            audioManager.stopAllRingtones()
+            audioManager.playRingtone(Uri.parse(action.audioURI))
         }
         if (action.isVibration) {
+            //todo complete this
+            vibrator.defaultVibrator.vibrate(1000)
         }
         if (action.isNotification) {
             val notification = Notification.Builder(appContext, "Cquence")
@@ -152,15 +200,33 @@ class SchedulerViewModel (
 //                // This part depends on the specific requirements and device capabilities
 //            }
             }
+        } else {
+            // todo stop the sequence
         }
     }
-    private fun startSequence(startAt: Int) {
-        timer = fixedRateTimer(initialDelay = 1000L, period = 1000L) {
-            updateTimer()
+    private fun startSequence(startAt: Long, skipTo:Long) {
+        if(_isRunning.value){
+            return
         }
-        _nextScheduledActionIndex.value = startAt
+        if(_scheduledActions.value.last().time < System.currentTimeMillis()){
+            return
+        }
+        if(_scheduledActions.value.last().time < skipTo){
+            return
+        }
+        for(action in _scheduledActions.value){
+            if(action.time < skipTo){
+                _nextScheduledActionIndex.value++
+            }
+            else break
+        }
+        duration= (skipTo-startAt).toDuration(DurationUnit.MILLISECONDS)
+        updateTimeState()
+        timer = fixedRateTimer(initialDelay = 1000L, period = 1000L) {
+            updateState()
+        }
+        _isRunning.value = true
         waitOnNextAction()
-
     }
     fun onSchedulerEvent(event: SchedulerEvent) {
         when (event) {
@@ -169,21 +235,38 @@ class SchedulerViewModel (
                     val  sequence = sequenceDao.getSequenceById(event.sequenceId)
                     _sequenceName.value = sequence.name
                     actionList = sequence.actionList
-                    startTime = System.currentTimeMillis()+1000
-                    for (action in actionList!!) {
-                        processingActions = processingActions + ProcessingAction(action, action.initialDelay, 0)
+                    cleanScheduleAll()
+                    if(event.playImmediately){
+                        startSequence(event.startAt,event.skipTo)
                     }
-                    schedule(10)
-                    startSequence(event.startAt)
                 }
             }
 
             SchedulerEvent.StopSequence -> {
                 viewModelScope.launch{
+                    stopSequence()
+                }
+            }
+            SchedulerEvent.PauseSequence -> {
+                viewModelScope.launch{
+                    pauseSequence()
+                }
+
+            }
+            SchedulerEvent.PlaySequence -> {
+                viewModelScope.launch{
+                    startSequence(System.currentTimeMillis(),System.currentTimeMillis())
+                }
+
+            }
+            is SchedulerEvent.ChangeTime -> {
+                viewModelScope.launch{
                     timer?.cancel()
-                    audioPlayer.stopAudio()
-                    vibrator.cancel()
-                    notificationManager.cancelAll()
+                    duration = event.time.toDuration(DurationUnit.MILLISECONDS)
+                    updateTimeState()
+                    timer = fixedRateTimer(initialDelay = 1000L, period = 1000L) {
+                        updateState()
+                    }
                 }
             }
         }

@@ -7,6 +7,7 @@ import com.example.cquence.data_types.Alarm
 sealed interface MainEvent {
     data class AddAlarm(val alarm: Alarm) : MainEvent
     data class AddSequence(val sequence: Sequence) : MainEvent
+    data class SelectSequence(val sequence: Sequence?) : MainEvent
     data class SetAlarmActive(val alarm: Alarm, val context: Context) : MainEvent
-    data class StartSequence(val sequenceId: Int, val startAt: Int) : MainEvent
+    data class StartSequence(val sequenceId: Int, val startAt: Long, val skipTo: Long=startAt) : MainEvent
 }

@@ -22,7 +22,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.window.DialogProperties
 
-@RequiresApi(Build.VERSION_CODES.S)
 @Composable
 fun CheckExactAlarmPermission() {
     val context = LocalContext.current

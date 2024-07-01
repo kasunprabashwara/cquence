@@ -1,13 +1,10 @@
 package com.example.cquence.ui.dialogs
 
 
-import android.app.Activity
 import android.content.Context
-import android.content.Intent
 import android.database.Cursor
 import android.net.Uri
 import android.provider.OpenableColumns
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
@@ -16,14 +13,22 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -31,6 +36,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.cquence.data_types.Action
+import com.example.cquence.services.audio.AudioRecordContract
+import com.example.cquence.services.saveAudioToFile
 
 
 fun getFileName(context: Context, uri: Uri): String {
@@ -74,10 +81,17 @@ fun ActionDialog(
 
     // Activity Result Launcher to pick audio file
     val audioPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            audioUri = result.data?.data
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            audioUri= it
+        }
+    }
+    val audioRecorderLauncher = rememberLauncherForActivityResult(
+        AudioRecordContract()
+    ) { uri ->
+        uri?.let {
+            audioUri = saveAudioToFile(context, it, getFileName(context, it))
         }
     }
     val audioName by remember {
@@ -90,33 +104,43 @@ fun ActionDialog(
         onDismissRequest = { onDismiss() },
         title = { Text(if (isEditing) "Edit Action" else "Add Action") },
         text = {
-            Column {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
                 OutlinedTextField(
                     value = nameState.value,
                     onValueChange = { nameState.value = it },
                     label = { Text("Action Name") }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = {
-                    val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                        addCategory(Intent.CATEGORY_OPENABLE)
-                        type = "audio/*"
-                    }
-                    audioPickerLauncher.launch(intent)
-                },
-                    shape = MaterialTheme.shapes.small,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                ) {
-                    Text("Pick a Soundtrack")
-                }
-                if (audioName.isNotEmpty()) {
-                    Text("Selected Audio: $audioName")
-                }
-                Spacer(modifier = Modifier.height(8.dp))
                 SwitchWithLabel(
                     label = "Play Audio",
                     state = isAudioPlayedState
                 )
+                if (isAudioPlayedState.value) {
+                    Button(onClick = {
+                        audioPickerLauncher.launch(arrayOf("audio/*"))
+                    },
+                        shape = MaterialTheme.shapes.small,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) {
+                        Text("Pick a Soundtrack")
+                    }
+                    Button(onClick = {
+                        audioRecorderLauncher.launch(Unit)
+                    },
+                        shape = MaterialTheme.shapes.small,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) {
+                        Text("Record a Soundtrack")
+
+                    }
+                    if (audioName.isNotEmpty()) {
+                        Text("Selected Audio: $audioName")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                }
                 SwitchWithLabel(
                     label = "Enable Vibration",
                     state = isVibrationState

@@ -21,6 +21,7 @@ import com.example.cquence.ui.screens.AddEditSequencesPage
 import com.example.cquence.ui.screens.main_screen.MainScreen
 import com.example.cquence.ui.theme.CquenceTheme
 import com.example.cquence.view_model.main.MainViewModel
+import com.example.cquence.data_types.Sequence
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.androidx.viewmodel.ext.android.viewModel
@@ -67,6 +68,7 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("add-edit-sequence") {
                         AddEditSequencesPage(
+                            sequence = state.selectedSequence ?: Sequence( name = "", actionList = listOf(),null),
                             onEvent = viewModel::onEvent,
                             navController = navController
                         )

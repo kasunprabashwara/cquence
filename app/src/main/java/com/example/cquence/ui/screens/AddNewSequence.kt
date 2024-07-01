@@ -12,10 +12,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -42,6 +46,7 @@ import com.example.cquence.ui.dialogs.ActionDialog
 @Composable
 fun PreviewAddSequenceDialog() {
     AddEditSequencesPage(
+        sequence = Sequence("Sequence 1", listOf(Action("Action 1", true,"audio", audioName = "audio",id=1)), id = 1),
         onEvent = {
             true
         },
@@ -63,9 +68,8 @@ fun ActionCard(action: Action, onActionChange: (Action) -> Unit) {
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
         shape = MaterialTheme.shapes.small,
         modifier = Modifier
+            .padding(8.dp)
             .fillMaxWidth()
-            .height(150.dp)
-            .clickable { showDialog = true }
     ) {
         Row(
             modifier = Modifier
@@ -79,10 +83,14 @@ fun ActionCard(action: Action, onActionChange: (Action) -> Unit) {
                 modifier = Modifier.weight(1f)
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = action.audioName,
-                modifier = Modifier.weight(1f)
-            )
+            IconButton(
+                onClick = {
+                    showDialog = true
+                }
+            ) {
+                Icon(Icons.Default.Edit, contentDescription = "Edit Action")
+
+            }
             Spacer(modifier = Modifier.width(16.dp))
         }
     }
@@ -102,12 +110,13 @@ fun ActionCard(action: Action, onActionChange: (Action) -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditSequencesPage(
+    sequence: Sequence,
     onEvent: (MainEvent) -> Boolean,
     navController: NavController,
     modifier: Modifier = Modifier
 ) {
-    var sequenceName by remember { mutableStateOf(TextFieldValue("")) }
-    var actions by remember { mutableStateOf(listOf<Action>()) }
+    var sequenceName by remember { mutableStateOf(TextFieldValue(sequence.name)) }
+    var actions by remember { mutableStateOf(listOf(*sequence.actionList.toTypedArray())) }
     var showDialog by remember { mutableStateOf(false) }
     var editingAction by remember { mutableStateOf<Action?>(null) }
 
@@ -176,7 +185,7 @@ fun AddEditSequencesPage(
                                 Sequence(
                                     name = sequenceName.text,
                                     actionList = actions,
-                                    id = null
+                                    id = sequence.id
                                 )
                             )
                         )

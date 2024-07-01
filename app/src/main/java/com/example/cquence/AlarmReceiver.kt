@@ -16,7 +16,8 @@ class AlarmReceiver : BroadcastReceiver() {
         // Create an Intent to stop the alarm
         val stopIntent = Intent(context, RunSequenceActivity::class.java)
         stopIntent.putExtra("sequenceId", intent.getIntExtra("sequenceId", -1))
-        stopIntent.putExtra("startAt", intent.getIntExtra("startAt", 0))
+        stopIntent.putExtra("startAt", intent.getLongExtra("startAt", System.currentTimeMillis()))
+        stopIntent.putExtra("skipTo",intent.getLongExtra("skipTo",System.currentTimeMillis()))
         stopIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         val pendingIntent= PendingIntent.getActivity(context, 0, stopIntent, PendingIntent.FLAG_IMMUTABLE)
         pendingIntent.send()

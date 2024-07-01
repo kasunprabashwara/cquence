@@ -43,6 +43,7 @@ fun MainScreen(
             FloatingActionButton(
                 onClick = {
                     if (pagerState.currentPage == 1) {
+                        onEvent(MainEvent.SelectSequence(null))
                         navController.navigate("add-edit-sequence")
                     }
                     else if (pagerState.currentPage == 0) {
@@ -86,7 +87,7 @@ fun MainScreen(
                 HorizontalPager(state = pagerState) { page ->
                     when (page) {
                         0 -> AlarmsScreen(state.alarms, onEvent)
-                        1 -> SequencesScreen(state.sequences,onEvent)
+                        1 -> SequencesScreen(state.sequences ,onEvent, navController)
                     }
                 }
             }

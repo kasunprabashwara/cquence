@@ -1,9 +1,9 @@
 package com.example.cquence.view_model.scheduler
 
-import com.example.cquence.data_types.Action
 
 data class SchedulerState (
     var sequenceName : String = "",
+    var isRunning : Boolean = false,
     var scheduledActionList: List<ScheduledAction> = emptyList(),
     var nextScheduledActionIndex : Int = 0,
     var actionHappening : Boolean = false,

@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
 data class Action (
     var name: String,
     var isAudioPlayed: Boolean=true,
-    var audioURI: String,
+    var audioURI: String="",
     var audioName: String="",
     var isVibration: Boolean=true,
     var isNotification: Boolean=false,

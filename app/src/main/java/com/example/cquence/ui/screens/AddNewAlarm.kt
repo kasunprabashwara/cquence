@@ -49,7 +49,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.cquence.view_model.main.MainEvent
 import com.example.cquence.data_types.Sequence
 import com.example.cquence.data_types.Alarm
-import com.example.cquence.utilities.convertToDate
+import com.example.cquence.services.convertToDate
 
 @Preview(showBackground = true)
 @Composable
@@ -74,7 +74,6 @@ fun AddEditAlarmPage(
     var datePickerState = rememberDatePickerState(initialSelectedDateMillis = System.currentTimeMillis())
     val date by remember { derivedStateOf { datePickerState.selectedDateMillis?.let {
         convertToDate(it) } } }
-    val isActive by remember { mutableStateOf(true) }
     var selectedSequenceId by remember { mutableStateOf<Int?>(null) }
     var timePickerDialog by remember { mutableStateOf(false) }
     var dateDialog by remember { mutableStateOf(false) }
@@ -237,7 +236,7 @@ fun AddEditAlarmPage(
                                     hour = timePickerState.hour,
                                     minute = timePickerState.minute,
                                     date = date.toString(),
-                                    isActive = isActive,
+                                    isActive = false,
                                     id = null
                                 )
                             )

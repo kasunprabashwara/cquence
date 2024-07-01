@@ -3,12 +3,15 @@ package com.example.cquence.view_model.main
 
 import android.content.Context
 import android.content.Intent
+import androidx.compose.runtime.MutableState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cquence.activities.RunSequenceActivity
+import com.example.cquence.data_types.Sequence
 import com.example.cquence.room_db.AlarmDao
 import com.example.cquence.room_db.SequenceDao
-import com.example.cquence.utilities.setAlarm
+import com.example.cquence.services.saveAudioToFile
+import com.example.cquence.services.setAlarm
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -32,14 +35,16 @@ class MainViewModel(
         started = SharingStarted.WhileSubscribed(),
         initialValue = emptyList()
     )
-    private val _state = MutableStateFlow(MainState())
+    private val _selectedSequence = MutableStateFlow<Sequence?>(null)
     val state = combine(
         _alarms,
-        _sequences
-    ) { alarms, sequences ->
+        _sequences,
+        _selectedSequence
+    ) { alarms, sequences,selectedSequence ->
         MainState(
             alarms = alarms,
-            sequences = sequences
+            sequences = sequences,
+            selectedSequence = selectedSequence
         )
     }.stateIn(
         scope = viewModelScope,
@@ -71,6 +76,10 @@ class MainViewModel(
                 intent.putExtra("sequenceId", event.sequenceId)
                 intent.putExtra("startAt", event.startAt)
                 appContext.startActivity(intent)
+            }
+
+            is MainEvent.SelectSequence -> {
+                _selectedSequence.value = event.sequence
             }
         }
         return true
