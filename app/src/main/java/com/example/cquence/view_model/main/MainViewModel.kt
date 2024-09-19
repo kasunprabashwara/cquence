@@ -3,14 +3,12 @@ package com.example.cquence.view_model.main
 
 import android.content.Context
 import android.content.Intent
-import androidx.compose.runtime.MutableState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cquence.activities.RunSequenceActivity
 import com.example.cquence.data_types.Sequence
 import com.example.cquence.room_db.AlarmDao
 import com.example.cquence.room_db.SequenceDao
-import com.example.cquence.services.saveAudioToFile
 import com.example.cquence.services.setAlarm
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -74,12 +72,19 @@ class MainViewModel(
             is MainEvent.StartSequence -> {
                 val intent = Intent(appContext, RunSequenceActivity::class.java)
                 intent.putExtra("sequenceId", event.sequenceId)
-                intent.putExtra("startAt", event.startAt)
+                intent.putExtra("skipTo", event.skipTo)
                 appContext.startActivity(intent)
             }
 
             is MainEvent.SelectSequence -> {
                 _selectedSequence.value = event.sequence
+            }
+
+            is MainEvent.DeleteSequence -> {
+                viewModelScope.launch {
+                    sequenceDao.deleteSequence(event.sequence.id!!)
+                    alarmDao.deleteAlarmsBySequenceId(event.sequence.id)
+                }
             }
         }
         return true

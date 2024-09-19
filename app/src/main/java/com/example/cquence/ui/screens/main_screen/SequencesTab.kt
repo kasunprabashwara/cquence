@@ -68,11 +68,12 @@ fun SequenceCard(
         AlertDialog(
             onDismissRequest = { showDialog = false },
             title = { Text(text = "Delete Sequence") },
-            text = { Text("Are you sure you want to delete this sequence?") },
+            text = { Text("Are you sure you want to delete this sequence?" +
+                    "notice that all the alarms that contain this sequence will also be deleted") },
             confirmButton = {
                 Button(
                     onClick = {
-                        //todo implement this
+                        onEvent(MainEvent.DeleteSequence(sequence))
                         showDialog = false
                     }
                 ) {
@@ -141,7 +142,7 @@ fun SequenceCard(
                     }
                     IconButton(
                         onClick = {
-                            onEvent(MainEvent.StartSequence(sequence.id!!, System.currentTimeMillis()))
+                            onEvent(MainEvent.StartSequence(sequence.id!!,0L))
                         }
                     ) {
                         Icon(imageVector = Icons.Default.PlayArrow, contentDescription = "Start")

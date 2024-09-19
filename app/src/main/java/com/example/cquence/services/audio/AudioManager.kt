@@ -1,34 +1,48 @@
 package com.example.cquence.services.audio
 
 import android.content.Context
-import android.media.Ringtone
-import android.media.RingtoneManager
+import android.media.MediaPlayer
 import android.net.Uri
-import java.util.concurrent.ConcurrentHashMap
 
 class AudioManager(private val context: Context) {
 
-    private val ringtoneCache = ConcurrentHashMap<Uri, Ringtone>()
+    private var mediaPlayer: MediaPlayer? = null
 
-    fun playRingtone(ringtoneUri: Uri) {
+    fun playAudio(audioUri: Uri) {
         try {
-            val ringtone = ringtoneCache.getOrPut(ringtoneUri) {
-                RingtoneManager.getRingtone(context, ringtoneUri)
+            mediaPlayer?.release()
+            mediaPlayer = MediaPlayer().apply {
+                setDataSource(context, audioUri)
+                prepare()
+                start()
             }
-            ringtone.play()
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
-    fun isPlaying(ringtoneUri: Uri): Boolean {
-        return ringtoneCache[ringtoneUri]?.isPlaying ?: false
-    }
-    fun stopRingtone(ringtoneUri: Uri) {
-        ringtoneCache[ringtoneUri]?.stop()
+    fun pauseAudio() {
+        mediaPlayer?.pause()
     }
 
-    fun stopAllRingtones() {
-        ringtoneCache.values.forEach { it.stop() }
+    fun stopAudio() {
+        mediaPlayer?.stop()
+        mediaPlayer?.release()
+        mediaPlayer = null
+    }
+
+    fun isPlaying(): Boolean {
+        return mediaPlayer?.isPlaying ?: false
+    }
+
+    fun getCurrentPosition(): Int {
+        return mediaPlayer?.currentPosition ?: 0
+    }
+    fun getAudioDuration(): Int {
+        return mediaPlayer?.duration ?: 0
+    }
+
+    fun seekTo(position: Int) {
+        mediaPlayer?.seekTo(position)
     }
 }

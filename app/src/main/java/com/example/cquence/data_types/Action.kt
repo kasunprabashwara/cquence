@@ -9,6 +9,7 @@ data class Action (
     var isAudioPlayed: Boolean=true,
     var audioURI: String="",
     var audioName: String="",
+    var audioTimeout: Long=0,
     var isVibration: Boolean=true,
     var isNotification: Boolean=false,
     var notificationText : String = "",

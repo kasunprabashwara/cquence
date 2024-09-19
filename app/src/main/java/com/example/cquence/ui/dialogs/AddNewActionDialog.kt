@@ -3,6 +3,7 @@ package com.example.cquence.ui.dialogs
 
 import android.content.Context
 import android.database.Cursor
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -26,33 +28,26 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.cquence.data_types.Action
 import com.example.cquence.services.audio.AudioRecordContract
+import com.example.cquence.services.getAudioDuration
+import com.example.cquence.services.getFileName
 import com.example.cquence.services.saveAudioToFile
 
 
-fun getFileName(context: Context, uri: Uri): String {
-    var fileName = ""
-    val cursor: Cursor? = context.contentResolver.query(uri, null, null, null, null)
-    cursor?.use {
-        if (it.moveToFirst()) {
-            val displayNameIndex = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-            if (displayNameIndex >= 0) {
-                fileName = it.getString(displayNameIndex)
-            }
-        }
-    }
-    return fileName
-}
+
 @Preview
 @Composable
 fun ActionDialogPreview() {
@@ -69,6 +64,9 @@ fun ActionDialog(
     val nameState = remember { mutableStateOf(action.name) }
     var audioUri by remember { mutableStateOf<Uri?>(Uri.parse(action.audioURI)) }
     val isAudioPlayedState = remember { mutableStateOf(action.isAudioPlayed) }
+    var trackDuration by remember { mutableLongStateOf(0L) }
+    var audioTimeout by remember { mutableStateOf(action.audioTimeout.toString()) }
+    var tempAudioTimeout by remember { mutableStateOf("") }
     val isVibrationState = remember { mutableStateOf(action.isVibration) }
     val isNotificationState = remember { mutableStateOf(action.isNotification) }
     val notificationTextState = remember { mutableStateOf(action.notificationText) }
@@ -84,7 +82,11 @@ fun ActionDialog(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
         uri?.let {
-            audioUri= it
+            //todo change this to use file from original location instead of copying it
+            audioUri= saveAudioToFile(context, it, getFileName(context, it))
+            trackDuration = getAudioDuration(context, audioUri!!)
+            audioTimeout = trackDuration.toString()
+            tempAudioTimeout = trackDuration.toString()
         }
     }
     val audioRecorderLauncher = rememberLauncherForActivityResult(
@@ -92,6 +94,8 @@ fun ActionDialog(
     ) { uri ->
         uri?.let {
             audioUri = saveAudioToFile(context, it, getFileName(context, it))
+            trackDuration = getAudioDuration(context, audioUri!!)
+            audioTimeout = trackDuration.toString()
         }
     }
     val audioName by remember {
@@ -138,6 +142,29 @@ fun ActionDialog(
                     if (audioName.isNotEmpty()) {
                         Text("Selected Audio: $audioName")
                     }
+                    OutlinedTextField(
+                        value = tempAudioTimeout,
+                        onValueChange = {
+                            tempAudioTimeout = it
+                        },
+                        label = { Text("Audio Timeout (ms)") },
+                        keyboardOptions = KeyboardOptions.Default.copy(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                // Check the value when the user presses the "Done" action
+                                val timeout = tempAudioTimeout.toIntOrNull()
+                                if (timeout != null && timeout > 0 && timeout <= trackDuration) {
+                                    audioTimeout = tempAudioTimeout
+                                }
+                                else{
+                                    tempAudioTimeout = audioTimeout
+                                }
+                            }
+                        ),
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
 
                 }
@@ -193,6 +220,7 @@ fun ActionDialog(
                     action.audioName = audioName
                     action.audioURI = audioUri.toString()
                     action.isAudioPlayed = isAudioPlayedState.value
+                    action.audioTimeout = audioTimeout.toLongOrNull() ?: -1L
                     action.isVibration = isVibrationState.value
                     action.isNotification = isNotificationState.value
                     action.notificationText = notificationTextState.value

@@ -13,4 +13,6 @@ interface AlarmDao {
     suspend fun upsertAlarm(alarm: Alarm)
     @Query("SELECT * FROM Alarm")
     fun getAlarms(): Flow<List<Alarm>>
+    @Query("DELETE FROM Alarm WHERE sequenceId = :sequenceId")
+    suspend fun deleteAlarmsBySequenceId(sequenceId: Int)
 }

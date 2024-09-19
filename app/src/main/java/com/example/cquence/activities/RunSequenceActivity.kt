@@ -3,6 +3,7 @@ package com.example.cquence.activities
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -44,6 +45,7 @@ import com.example.cquence.view_model.scheduler.SchedulerViewModel
 import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class RunSequenceActivity : ComponentActivity() {
+    private val viewModel: SchedulerViewModel by viewModel()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val sequenceId = intent.getIntExtra("sequenceId", -1)
@@ -51,10 +53,8 @@ class RunSequenceActivity : ComponentActivity() {
             Toast.makeText(this, "Invalid sequence id", Toast.LENGTH_SHORT).show()
             finish()
         }
-        val startAt = intent.getLongExtra("startAt", System.currentTimeMillis())
         val skipTo = intent.getLongExtra("skipTo",System.currentTimeMillis())
-        val viewModel: SchedulerViewModel by viewModel()
-        viewModel.onSchedulerEvent(SchedulerEvent.StartSequence(sequenceId, startAt,skipTo,true))
+        viewModel.onSchedulerEvent(SchedulerEvent.StartSequence(sequenceId,skipTo,true))
         setContent {
             CquenceTheme {
                 Scaffold(

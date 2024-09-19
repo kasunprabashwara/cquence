@@ -1,5 +1,6 @@
 package com.example.cquence.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,6 +21,10 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,6 +36,8 @@ import androidx.compose.ui.unit.sp
 import com.example.cquence.R
 import com.example.cquence.data_types.Action
 import com.example.cquence.services.convertToDateTime
+import com.example.cquence.services.convertToTime
+import com.example.cquence.ui.dialogs.ChangeTimeDialog
 import com.example.cquence.view_model.scheduler.ScheduledAction
 import com.example.cquence.view_model.scheduler.SchedulerEvent
 import com.example.cquence.view_model.scheduler.SchedulerState
@@ -45,6 +52,20 @@ fun RunSequenceScreen(
     val actions = state.scheduledActionList
     val nextActionIndex = state.nextScheduledActionIndex
 
+    var showChangeTimeDialog by remember { mutableStateOf(false) }
+
+    if (showChangeTimeDialog) {
+        ChangeTimeDialog(
+            onDismiss = { showChangeTimeDialog = false },
+            onConfirm = { time ->
+                showChangeTimeDialog = false
+                onEvent(SchedulerEvent.ChangeTime(time))
+            }
+        )
+    }
+    BackHandler(state.isRunning) {
+        onEvent(SchedulerEvent.StopSequence)
+    }
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
@@ -94,7 +115,7 @@ fun RunSequenceScreen(
             ){
                 Button(
                     onClick = {
-                        // Handle change time logic here
+                        showChangeTimeDialog = true
                     },
                     shape = CircleShape,
                     modifier = Modifier
@@ -108,14 +129,9 @@ fun RunSequenceScreen(
                 ) {
                     Icon(painterResource(id = R.drawable.baseline_fast_forward_24), contentDescription = "Change Time")
                 }
-                Button(
+                if(state.isRunning) Button(
                     onClick = {
-                        if(state.isRunning){
-                            onEvent(SchedulerEvent.StopSequence)
-                        }
-                        else{
-                            onEvent(SchedulerEvent.PlaySequence)
-                        }
+                        onEvent(SchedulerEvent.PauseSequence)
                     },
                     shape = CircleShape,
                     modifier = Modifier
@@ -123,26 +139,38 @@ fun RunSequenceScreen(
                         .clip(CircleShape)
                         .padding(16.dp),
                     colors = ButtonDefaults.buttonColors(
-                        if(state.isRunning) Color.Red else Color.Green,
+                        Color.Red,
                         contentColor = Color.White
                     )
                 ) {
-                    if(state.isRunning){
-                        Icon(
-                            painterResource(id = R.drawable.baseline_stop),
-                            contentDescription = "Stop"
-                        )
-                    }
-                    else{
-                        Icon(
-                            painterResource(id = R.drawable.baseline_play_arrow_24),
-                            contentDescription = "Play"
-                        )
-                    }
+                    Icon(
+                        painterResource(id = R.drawable.baseline_pause_24),
+                        contentDescription = "Pause"
+                    )
+
+                }
+                else Button(
+                    onClick = {
+                        onEvent(SchedulerEvent.PlaySequence)
+                    },
+                    shape = CircleShape,
+                    modifier = Modifier
+                        .size(130.dp)
+                        .clip(CircleShape)
+                        .padding(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        Color.Green,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Icon(
+                        painterResource(id = R.drawable.baseline_play_arrow_24),
+                        contentDescription = "Play"
+                    )
                 }
                 Button(
                     onClick = {
-                        onEvent(SchedulerEvent.PauseSequence)
+                        onEvent(SchedulerEvent.StopSequence)
                     },
                     shape = CircleShape,
                     modifier = Modifier
@@ -154,7 +182,7 @@ fun RunSequenceScreen(
                         contentColor = Color.White
                     ),
                 ) {
-                    Icon(painterResource(id = R.drawable.baseline_pause_24), contentDescription = "Pause")
+                    Icon(painterResource(id = R.drawable.baseline_stop), contentDescription = "Stop")
                 }
             }
         }
@@ -176,7 +204,7 @@ private fun ScheduledActionCard(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(text = action.action.name, fontSize = 20.sp)
-            Text(text = "Scheduled time: ${convertToDateTime(action.time)}", fontSize = 16.sp)
+            Text(text = "Scheduled time: ${convertToTime(action.time)}", fontSize = 16.sp)
         }
     }
 }
@@ -193,6 +221,7 @@ fun DefaultPreview() {
             isRunning = false,
             scheduledActionList = listOf(
                 ScheduledAction(
+                    index = 0,
                     action = Action("Test Action", id = 1),
                     time = System.currentTimeMillis()
                 )),

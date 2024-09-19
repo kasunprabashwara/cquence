@@ -14,4 +14,6 @@ interface SequenceDao {
     fun getSequences(): Flow<List<Sequence>>
     @Query("SELECT * FROM Sequence WHERE id = :id")
     suspend fun getSequenceById(id: Int): Sequence
+    @Query("DELETE FROM Sequence WHERE id = :id")
+    suspend fun deleteSequence(id: Int)
 }

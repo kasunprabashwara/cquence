@@ -141,7 +141,7 @@ fun AddEditSequencesPage(
             )
             LazyColumn(
                 modifier = Modifier
-                    .padding(16.dp)
+                    .padding(8.dp)
                     .fillMaxWidth()
             ) {
                 items(actions) { action ->
@@ -152,7 +152,7 @@ fun AddEditSequencesPage(
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Button(
                 onClick = {
                     editingAction = null
